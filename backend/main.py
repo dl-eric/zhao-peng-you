@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from api import api
-from config import origins
+from .api import api
+from .config import origins
 
 # FastAPI
 app = FastAPI()
