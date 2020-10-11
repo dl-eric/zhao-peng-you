@@ -15,7 +15,7 @@ function GameLobby(props) {
 
     const initializeSocket = (name) => {
         // ws://localhost:8000/lobby/%s <- %s = lobby_code
-        let socket = new WebSocket(`ws://localhost:8000/lobby/${gamecode}`);
+        let socket = new WebSocket(`ws://localhost:8000/lobby/${gamecode}?player_name=${name}`);
         socket.onmessage = (event) => {
             const [prefix, msg] = event.data.split(':');
             if (prefix === 'name') {
