@@ -1,8 +1,14 @@
 click==7.1.2
 dataclasses==0.7
 fastapi==0.61.1
+gevent==20.9.0
+greenlet==0.4.17
 h11==0.11.0
 pydantic==1.6.1
 starlette==0.13.6
 typing-extensions==3.7.4.3
 uvicorn==0.12.1
+websocket==0.2.1
+websockets==8.1
+zope.event==4.5.0
+zope.interface==5.1.2
