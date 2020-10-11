@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, WebSocket
+from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
 from backend.db.base import db
 from backend.lobby_manager import LobbyManager
@@ -47,7 +47,7 @@ async def join_lobby(lobby_code: str, player_name: str):
     return new_player_id
 
 
-@router.websocket('/{lobby_code}/ws')
+@router.websocket('/{lobby_code}')
 async def lobby_websocket(websocket: WebSocket, lobby_code: str):
     lm = LobbyManager.get_instance()
     lobby = None
@@ -56,20 +56,15 @@ async def lobby_websocket(websocket: WebSocket, lobby_code: str):
         lobby = lm.get_lobby(lobby_code)
     except LobbyNotFoundException:
         # Websocket close logic
-        websocket.close()
+        await websocket.close()
         return
+    
+    await lobby.connect(websocket)
 
-    lobby.connect(websocket)
-
-    while True:
-        data = await websocket.receive_text()
-        await websocket.send_text(f"Message text was: {data}")
-    # if not player_id or not lm.in_lobby(lobby_code, player_id):
-    #     await websocket.close()
-    #     return
-    # print(lobby_code)
-    # await websocket.accept()
-
-    # websocket.send_text("hi!")
-
-    # await websocket.close()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Message text was: {data}")
+    except WebSocketDisconnect:
+        lobby.disconnect(websocket)
+        print("WS Disconnected")
