@@ -1,11 +1,12 @@
 import React, {useState} from 'react';
 import {Link} from 'react-router-dom';
+import {withRouter} from 'react-router';
 import Cleave from 'cleave.js/react';
 
 import Button from 'components/button';
 import {createLobby} from 'utils/api';
 
-export default function() {
+function CreateGame(props) {
     const [name, setName] = useState('');
 
     const onNameChange = (e) => {
@@ -14,8 +15,13 @@ export default function() {
 
     const handleCreateLobby = async () => {
         const lobbyCode = await createLobby(name);
+        console.log(props);
         if(lobbyCode) {
-            console.log("created lobby with code ", lobbyCode);
+            // navigate to the newly created lobby
+            props.history.push({
+                pathname: `/join/${lobbyCode}`,
+                search: `?name=${name}`
+            });
         }
     }
 
@@ -27,3 +33,5 @@ export default function() {
         </div>
     )
 }
+
+export default withRouter(CreateGame);

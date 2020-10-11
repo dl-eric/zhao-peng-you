@@ -28,25 +28,23 @@ async def create_lobby():
     return code
 
 
-@router.post('/join/{lobby_code}')
-async def join_lobby(lobby_code: str, player_name: str):
-    lm = LobbyManager.get_instance()
-    lobby = None
-    new_player_id = None
-
-    try:
-        lobby = lm.get_lobby(lobby_code)
-    except LobbyNotFoundException:
-        raise HTTPException(status_code=404, detail="Lobby not found")
-
-    try:
-        new_player_id = lobby.join_lobby(player_name)
-    except LobbyPlayerExistsException:
-        raise HTTPException(status_code=400, detail="Player with that name already exists in the lobby.")
-
-    return new_player_id
-
-
+# Message Protocol:
+# First message client sends should be the player name they want
+# First message client receives should be the player name they're assigned (server sanitized)
+#       Name message format: 
+#           name:<name here>
+#
+#       Chat message format:
+#           chat:<message>
+#
+#       Disconnect msg format:
+#           disconnect
+#
+#       New player msg format:
+#           new:<new player's name>
+#
+#       Hash'd player name:
+#           hash:<hash'd name>
 @router.websocket('/{lobby_code}')
 async def lobby_websocket(websocket: WebSocket, lobby_code: str):
     lm = LobbyManager.get_instance()
@@ -61,10 +59,22 @@ async def lobby_websocket(websocket: WebSocket, lobby_code: str):
     
     await lobby.connect(websocket)
 
+    player_name = await websocket.receive_text()
+    if not player_name or len(player_name) < 2:
+        await websocket.close()
+        return
+
+    (new_player_id, new_player_name) = await lobby.join_lobby(player_name)
+
+    print(new_player_name, "joined lobby", lobby_code, "with id", new_player_id)
+    await websocket.send_text("name:" + new_player_name)
+    await websocket.send_text("hash:" + str(new_player_id))
+
     try:
         while True:
             data = await websocket.receive_text()
+            # TODO: differentiate messages, like leave lobby, change name, etc.
             await websocket.send_text(f"Message text was: {data}")
     except WebSocketDisconnect:
         lobby.disconnect(websocket)
-        print("WS Disconnected")
+        print(new_player_name, "WS Disconnected from", lobby_code)
