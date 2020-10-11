@@ -6,3 +6,6 @@ class LobbyNotFoundException(Exception):
 
 class LobbyPlayerExistsException(Exception):
     pass
+
+class PlayerNotFoundException(Exception):
+    pass
