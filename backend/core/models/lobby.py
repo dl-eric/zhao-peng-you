@@ -1,16 +1,24 @@
 from fastapi import WebSocket
 
+from backend.core.socket import sio
 from backend.config import MAX_NAME_LENGTH
-from backend.exceptions import LobbyPlayerExistsException
+from backend.core.exceptions import LobbyPlayerExistsException
 import json
 import uuid
+
+class LobbyPlayer:
+    def __init__(self, sid, uuid):
+        self.sid = sid
+        self.uuid = uuid
+        self.name = ""
+        self.leader = False
 
 
 class Lobby:
     def __init__(self, join_code):
         self.join_code = join_code
         self.players = dict() # names -> uuids
-        self.connections = dict() # uuids -> WebSocket
+        self.connections = dict() # uuids -> socket io id
         self.leader = None
         self.cleanup = False
 
@@ -37,13 +45,12 @@ class Lobby:
 
 
     async def send_player_update(self):
-        print(json.dumps(list(self.players.keys())))
-        await self.broadcast("players:" + json.dumps(list(self.players.keys())))
-        await self.broadcast("leader:" + self.leader)
+        await sio.emit("players", json.dumps(player_names), room=self.join_code)
+        await sio.emit("leader", self.leader, room=self.join_code)
 
 
     # Returns (uuid4, player_name)
-    async def join_lobby(self, player_name: str):
+    async def join_lobby(self, player_name: str, sid):
         # Truncate name
         player_name = player_name[:MAX_NAME_LENGTH]
 
@@ -52,35 +59,28 @@ class Lobby:
             player_name += str(uniquifier)
             uniquifier += 1
 
+        # Give player back their sanitized name
+        await sio.emit('name', player_name, room=sid)
+
         player_id = uuid.uuid4()
         self.players[player_name] = player_id
+
+        # Give player their id
+        await sio.emit('id', str(player_id), room=sid)
 
         if not self.leader:
             self.leader = player_name
 
-        return (player_id, player_name)
-
-
-    async def broadcast(self, message: str):
-        for player_id in self.connections:
-            await self.connections[player_id].send_text(message)
-
-
-    async def connect(self, websocket: WebSocket, player_id):
-        if player_id in self.connections:
-            return
-
-        await websocket.accept()
-        self.connections[player_id] = websocket
-
+        sio.enter_room(sid, self.join_code)
+        
         await self.send_player_update()
 
 
-    async def disconnect(self, websocket: WebSocket, player_name: str, player_id):
+    async def leave_lobby(self, player_name, player_id, sid):
         if player_name in self.players and self.players[player_name] == player_id:
             del self.players[player_name]
             del self.connections[player_id]
-            await websocket.close()
+            sio.disconnect(sio)
 
             # TODO:If we were the last player in the lobby, clean up this lobby object.
             if len(self.players) <= 0:

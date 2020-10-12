@@ -2,6 +2,7 @@ import React, {useEffect, useState} from 'react';
 import Cleave from 'cleave.js/react';
 import {Link, useParams, withRouter} from 'react-router-dom';
 import queryString from 'query-string';
+import io from 'socket.io-client';
 
 import Button from 'components/button';
 
@@ -15,25 +16,11 @@ function GameLobby(props) {
 
     const initializeSocket = (name) => {
         // ws://localhost:8000/lobby/%s <- %s = lobby_code
-        let socket = new WebSocket(`ws://localhost:8000/lobby/${gamecode}?player_name=${name}`);
-        socket.onmessage = (event) => {
-            const [prefix, msg] = event.data.split(':');
-            if (prefix === 'name') {
-                setName(msg);
-            }
-            else if (prefix === 'chat') {
-
-            }
-            else if (prefix === 'players') {
-                console.log(msg);
-                setPlayers(JSON.parse(msg));
-            }
-            console.log(event.data);
-        };
-        socket.onopen = (event) => {
-            socket.send(name);
-            setSocket(socket);
-        };
+        const socket = io("http://localhost:8000");
+        setSocket(socket)
+        socket.emit('join_lobby', gamecode, name);
+        socket.on("name", (msg) => setName(msg));
+        socket.on("players", (players_json) => setPlayers(JSON.parse(players_json)));
     }
 
     useEffect(() => {

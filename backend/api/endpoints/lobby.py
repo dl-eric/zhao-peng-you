@@ -1,8 +1,7 @@
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 
-from backend.db.base import db
-from backend.lobby_manager import LobbyManager
-from backend.exceptions import SessionsFullException, LobbyNotFoundException, LobbyPlayerExistsException
+from backend.core.lobby_manager import LobbyManager
+from backend.core.exceptions import SessionsFullException, LobbyNotFoundException, LobbyPlayerExistsException
 
 
 router = APIRouter()

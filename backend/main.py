@@ -1,8 +1,11 @@
+import socketio
+
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .api import api
+from .core.socket import socket_app
 
 html = """
 <!DOCTYPE html>
@@ -40,7 +43,20 @@ html = """
 
 # FastAPI
 app = FastAPI()
+origins = [
+    "*"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(api.api_router)
+app.mount('/', socket_app)
 
 @app.get("/{lobby_code}")
 async def get(lobby_code: str):
